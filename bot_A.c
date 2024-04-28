@@ -9,8 +9,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_STR 50
-#define PORT    1
+#define MAX_STR     50
+#define PORT        1
+#define DEFAULT_POS -1
 
 typedef enum {
     TRUE = 1,
@@ -50,7 +51,7 @@ typedef struct {
     Coordinate pos;         // Posição atual do bot
     Coordinate rival_pos;   // Posição do bot rival
     int fish;               // quantidade de peixes: cada peixe pesa 1kg
-    int capacity;           // capacidade máxima de peixes: 10kg
+    const int capacity;     // capacidade máxima de peixes: 10kg
     BotState state;         // O que o bot ta fazendo no momento
     Coordinate locked_pos;  // Posição que o bot quer ir
 } Bot;
@@ -87,31 +88,40 @@ void read_data(Bot* this_bot, int heigth, int width, int board[heigth][width]) {
 
 // função para ver se o navio está cheio
 // Se estiver, ele deve ir para o porto
-MyBool ship_full(Bot* ship) { return ship->fish == ship->capacity; }
+const MyBool ship_full(const Bot* ship) { return ship->fish == ship->capacity; }
 
 // Função para ver se vai levar multa, ponto de pesca sem peixe
 // Sair do ponto de pesca, quando tiver 1 sobrando
-MyBool imminent_penalty(Bot* ship, int heigth, int width, int board[heigth][width]) {
+const MyBool imminent_penalty(const Bot* ship,
+                              const int heigth,
+                              const int width,
+                              const int board[heigth][width]) {
     fprintf(stderr, "Amount of fishes: %i\n", board[ship->pos.x][ship->pos.y] % 10);
     return ((board[ship->pos.x][ship->pos.y] - 1) % 10) < 1;
 }
 
 // Usada para verificar se num possível futuro ponto de pesca, haverá pelo menos 2 peixes
 // Se não houver, a condição não vai ser atendida no find_nearest_location
-MyBool at_fishing_point(Bot* ship, int height, int width, int board[height][width]) {
+const MyBool at_fishing_point(const Bot* ship,
+                              const int height,
+                              const int width,
+                              const int board[height][width]) {
     return board[ship->pos.x][ship->pos.y] > 1;
 }
 
 // Distância de manhattan
 // Usado para calcular posição de um porto ou ponto de pesca em relação ao bot
-int calculate_distance(Coordinate a, Coordinate b) { return abs(a.x - b.x) + abs(a.y - b.y); }
+const int calculate_distance(const Coordinate a, const Coordinate b) {
+    return abs(a.x - b.x) + abs(a.y - b.y);
+}
 
 // Posição cartesiana de algo, mais próximo do bot
-Coordinate find_nearest_location(Bot* ship,
-                                 int height,
-                                 int width,
-                                 int board[height][width],
-                                 MyBool (*condition)(int, int, int, int, int[height][width])) {
+const Coordinate find_nearest_location(
+  const Bot* ship,
+  const int height,
+  const int width,
+  const int board[height][width],
+  MyBool (*condition)(int, int, int, int, const int[height][width])) {
     Coordinate location = { 0, 0 };
     int min_distance = height + width;
     for (int line = 0; line < height; line++) {
@@ -130,47 +140,52 @@ Coordinate find_nearest_location(Bot* ship,
     return location;
 }
 
-MyBool is_port(int line, int column, int height, int width, int board[height][width]) {
+MyBool is_port(const int line,
+               const int column,
+               const int height,
+               const int width,
+               const int board[height][width]) {
     return board[line][column] == PORT;
 }
 
-MyBool has_at_least_2_fishes(int desired_row,
-                             int desired_col,
-                             int height,
-                             int width,
-                             int board[height][width]) {
+MyBool has_at_least_2_fishes(const int desired_row,
+                             const int desired_col,
+                             const int height,
+                             const int width,
+                             const int board[height][width]) {
     return board[desired_row][desired_col] % 10 >= 2;
 }
 
-Coordinate find_nearest_port(Bot* ship, int height, int width, int board[height][width]) {
+Coordinate find_nearest_port(Bot* ship,
+                             const int height,
+                             const int width,
+                             const int board[height][width]) {
     return find_nearest_location(ship, height, width, board, is_port);
 }
 
-Coordinate find_nearest_fishing_point(Bot* ship, int height, int width, int board[height][width]) {
+Coordinate find_nearest_fishing_point(Bot* ship,
+                                      const int height,
+                                      const int width,
+                                      const int board[height][width]) {
     return find_nearest_location(ship, height, width, board, has_at_least_2_fishes);
 }
 
-Action calculate_next_x_move(Bot* ship, Coordinate some_point) {
-    Action move = NOTHING;
-    if (some_point.x < ship->pos.x) {
-        move = MOVE_UP;
-    } else if (some_point.x > ship->pos.x) {
-        move = MOVE_DOWN;
-    }
-    return move;
+Action calculate_next_x_move(const Bot* ship, const Coordinate some_point) {
+    return (some_point.x < ship->pos.x)   ? MOVE_UP
+           : (some_point.x > ship->pos.x) ? MOVE_DOWN
+                                          : NOTHING;
 }
 
-Action calculate_next_y_move(Bot* ship, Coordinate some_point) {
-    Action move = NOTHING;
-    if (some_point.y < ship->pos.y) {
-        move = MOVE_LEFT;
-    } else if (some_point.y > ship->pos.y) {
-        move = MOVE_RIGHT;
-    }
-    return move;
+Action calculate_next_y_move(const Bot* ship, const Coordinate some_point) {
+    return (some_point.y < ship->pos.y)   ? MOVE_LEFT
+           : (some_point.y > ship->pos.y) ? MOVE_RIGHT
+                                          : NOTHING;
 }
 
-Action calculate_move(Bot* ship, int height, int width, int board[height][width]) {
+const Action calculate_move(const Bot* ship,
+                            const int height,
+                            const int width,
+                            const int board[height][width]) {
     // Dado um ponto,
     // O bot vai decidir primeiro se consegue mover no eixo x
     // Se ele já estiver na mesma linha da posição travada, ele vai se mover no eixo y
@@ -181,7 +196,14 @@ Action calculate_move(Bot* ship, int height, int width, int board[height][width]
     return move;
 }
 
-Action calculate_next_move(Bot* ship, int height, int width, int board[height][width]) {
+const MyBool bot_locked_a_coord(const Bot* ship) {
+    return ship->locked_pos.x == DEFAULT_POS && ship->locked_pos.y == DEFAULT_POS;
+}
+
+const Action calculate_next_move(Bot* ship,
+                                 const int height,
+                                 const int width,
+                                 const int board[height][width]) {
     // Se entrou aqui, é porque o bot ja decidiu se vai pescar ou se vai pra porto
     // Então, ele precisa calcular qual o próximo movimento que ele precisa fazer para chegar no
     // porto mais próximo ou no ponto de pesca mais próximo com ao menos 2 peixes
@@ -189,7 +211,7 @@ Action calculate_next_move(Bot* ship, int height, int width, int board[height][w
     // ponto de pesca ou agua)
     // TODO: Levar em consideração a posição do bot rival
     Action move = NOTHING;
-    if (ship->locked_pos.x == 0 && ship->locked_pos.y == 0) {
+    if (bot_locked_a_coord(ship)) {
         if (ship->state == GOING_TO_PORT) {
             fprintf(stderr, "Gonna find the nearest port\n");
             ship->locked_pos = find_nearest_port(ship, height, width, board);
@@ -209,7 +231,7 @@ Action calculate_next_move(Bot* ship, int height, int width, int board[height][w
 }
 
 // Dependendo do estado do bot, ele vai realizar uma ação correspondente
-Action decide(Bot* ship, int height, int width, int board[height][width]) {
+const Action decide(Bot* ship, const int height, const int width, const int board[height][width]) {
     if (ship->state == SELLING) {
         fprintf(stderr, "Bro is cooking\n");
         ship->fish = 0;
@@ -224,12 +246,12 @@ Action decide(Bot* ship, int height, int width, int board[height][width]) {
 }
 
 // Ação do bot para string
-char* actions[] = { "UP", "RIGHT", "DOWN", "LEFT", "SELL", "FISH" };
+const char* actions[] = { "UP", "RIGHT", "DOWN", "LEFT", "SELL", "FISH" };
 
-char* action_to_string(Action a) { return actions[a]; }
+const char* action_to_string(const Action a) { return actions[a]; }
 
 // Gerenciador do bot
-void bot_brain(Bot* ship, int h, int w, int board[h][w]) {
+void bot_brain(Bot* ship, const int height, const int width, const int board[height][width]) {
     // Se estiver cheio,
     //   Se estiver no porto, descarregar navio
     //   Caso contrário, ir para o porto
@@ -237,24 +259,25 @@ void bot_brain(Bot* ship, int h, int w, int board[h][w]) {
     //  Se estiver em ponto de pesca, pescar até penultimo peixe.
     //  Caso contrário, ir para o ponto de pesca mais próximo
     if (ship_full(ship)) {
-        if (is_port(ship->pos.x, ship->pos.y, h, w, board)) {
+        if (is_port(ship->pos.x, ship->pos.y, height, width, board)) {
             ship->state = SELLING;
-            ship->locked_pos = (Coordinate){ 0, 0 };
+            ship->locked_pos = (Coordinate){ DEFAULT_POS, DEFAULT_POS };
             fprintf(stderr, "Bro in port and reset'd the locked coordinate\n");
         } else {
             fprintf(stderr, "Bro is not in port and he wants the grand\n");
             ship->state = GOING_TO_PORT;
         }
     } else {
-        if (at_fishing_point(ship, h, w, board)) {
+        if (at_fishing_point(ship, height, width, board)) {
             fprintf(stderr, "Bro is at fishing point: ");
-            if (imminent_penalty(ship, h, w, board)) {
+            if (imminent_penalty(ship, height, width, board)) {
                 fprintf(stderr, "Bro gonna get a penalty, will fish in another place\n");
                 ship->state = GOING_FISHING;
             } else {
                 fprintf(stderr, "That shit ain't finishing any time soon\n");
                 ship->state = FISHING;
-                ship->locked_pos = (Coordinate){ 0, 0 }; // Reset in another place
+                ship->locked_pos
+                  = (Coordinate){ DEFAULT_POS, DEFAULT_POS };  // TODO: Reset in a better place
                 fprintf(stderr, " Reset'd the locked coordinate\n");
             }
         } else {
@@ -262,7 +285,7 @@ void bot_brain(Bot* ship, int h, int w, int board[h][w]) {
             ship->state = GOING_FISHING;
         }
     }
-    Action action = decide(ship, h, w, board);
+    const Action action = decide(ship, height, width, board);
     printf("%s\n", action_to_string(action));
     fprintf(stderr, "Bro Action: %s\n", action_to_string(action));
 }
