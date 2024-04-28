@@ -61,7 +61,7 @@ typedef struct {
 // TODO: Se o bot chegar na posição que lockou, ele deve desbloquear a posição
 //       Caso tenha outro bot na posição, ele deve tentar outra posição
 
-void read_data(Bot* this_bot, int heigth, int width, int board[heigth][width]) {
+void read_data(Bot* this_bot, const int heigth, const int width, int board[heigth][width]) {
     char identifier[MAX_STR];  // e.g. bot_A
     int num_of_bots, bot_pos_x, bot_pos_y;
     // lê os dados da área de pesca
